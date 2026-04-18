@@ -5,9 +5,16 @@ export default async function handler(req, res) {
 
     const { prompt } = req.body;
     const HF_TOKEN = process.env.HF_TOKEN; 
+
+    // 🚨 [핵심 방어 코드] Vercel 환경변수에 토큰이 제대로 안 들어있으면 여기서 멈추고 알려줍니다!
+    if (!HF_TOKEN || HF_TOKEN === "undefined") {
+        return res.status(500).json({ 
+            error: "Vercel 환경변수(HF_TOKEN)가 설정되지 않았습니다! Vercel 세팅을 다시 확인해주세요." 
+        });
+    }
     
-    // 완전 공개된(약관 동의 필요 없는) 기본 모델로 변경!
-    const API_URL = "https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5";
+    // 다시 가장 퀄리티가 좋은 무료 Flux 모델로 복구
+    const API_URL = "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell";
 
     try {
         const response = await fetch(API_URL, {
@@ -20,7 +27,6 @@ export default async function handler(req, res) {
         });
 
         if (!response.ok) {
-            // 이번에는 에러의 진짜 이유(텍스트)를 무조건 반환하게 수정했습니다.
             const errorText = await response.text();
             throw new Error(`HF 에러(${response.status}): ${errorText}`);
         }
