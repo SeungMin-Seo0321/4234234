@@ -1,0 +1,36 @@
+<!-- index.html의 스크립트 부분만 아래처럼 수정하세요 -->
+<script>
+    async function generateImage() {
+        const prompt = document.getElementById('promptInput').value;
+        const statusMsg = document.getElementById('statusMsg');
+        const resultImg = document.getElementById('result');
+
+        statusMsg.style.color = "blue";
+        statusMsg.innerText = "이미지를 생성하는 중입니다...";
+        resultImg.style.display = "none";
+
+        try {
+            // 허깅페이스가 아닌, 우리가 만든 Vercel API로 요청을 보냅니다.
+            const response = await fetch('/api/generate', {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ prompt: prompt }), // 프롬프트만 보냄
+            });
+
+            if (!response.ok) throw new Error("서버 에러가 발생했습니다.");
+
+            // Vercel API에서 넘겨준 이미지를 화면에 표시
+            const blob = await response.blob();
+            const imageUrl = URL.createObjectURL(blob);
+
+            resultImg.src = imageUrl;
+            resultImg.style.display = "block";
+            statusMsg.style.color = "green";
+            statusMsg.innerText = "생성 완료!";
+
+        } catch (error) {
+            statusMsg.style.color = "red";
+            statusMsg.innerText = "오류: " + error.message;
+        }
+    }
+</script>
