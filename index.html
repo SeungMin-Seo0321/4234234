@@ -3,73 +3,130 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>초간단 무료 AI 이미지 생성기</title>
+    <title>AI 이미지 생성기</title>
     <style>
-        body { font-family: sans-serif; background-color: #f4f4f9; display: flex; flex-direction: column; align-items: center; padding: 50px 20px; }
-        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 500px; width: 100%; text-align: center; }
-        input[type="text"] { width: 90%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; }
-        button { background-color: #000; color: white; border: none; padding: 12px 24px; font-size: 16px; border-radius: 6px; cursor: pointer; width: 100%; }
-        button:hover { background-color: #333; }
-        button:disabled { background-color: #aaa; cursor: not-allowed; }
-        #statusMsg { margin-top: 15px; font-weight: bold; }
-        #resultImage { margin-top: 20px; max-width: 100%; border-radius: 8px; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        body { font-family: sans-serif; display: flex; justify-content: center; padding: 40px 20px; background: #f5f5f5; margin: 0; }
+        .container { background: #fff; padding: 30px; border-radius: 8px; width: 100%; max-width: 500px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        h2 { margin-top: 0; font-size: 20px; }
+        label { font-size: 14px; font-weight: bold; margin-bottom: 5px; display: block; }
+        input[type="text"], input[type="file"] { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { width: 100%; background: #222; color: #fff; border: none; padding: 12px; font-size: 16px; border-radius: 4px; cursor: pointer; margin-bottom: 10px; }
+        button:hover { background: #444; }
+        button:disabled { background: #999; cursor: not-allowed; }
+        #preview { max-width: 100%; max-height: 200px; display: none; margin-bottom: 15px; border-radius: 4px; }
+        #resultImage { max-width: 100%; display: none; margin-top: 15px; border-radius: 4px; }
+        #downloadBtn { display: none; background: #0066cc; }
+        #downloadBtn:hover { background: #005bb5; }
+        .status { margin: 10px 0; font-size: 14px; color: #555; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>🎨 완전 무료 AI 이미지 (No API Key)</h2>
-    <p>영어로 프롬프트를 입력해보세요!</p>
+    <h2>이미지 생성</h2>
     
-    <input type="text" id="promptInput" value="A futuristic cyberpunk city, neon lights, highly detailed" placeholder="예: A futuristic cyberpunk city">
-    <button id="generateBtn" onclick="generateImage()">이미지 생성하기</button>
+    <label>이미지 업로드 (선택/참고용)</label>
+    <input type="file" id="imageInput" accept="image/*">
+    <img id="preview" alt="업로드 미리보기">
 
-    <p id="statusMsg"></p>
-    <img id="resultImage" alt="생성된 이미지 결과" />
+    <label>프롬프트 입력 (한국어)</label>
+    <input type="text" id="promptInput" placeholder="예: 우주복을 입은 귀여운 고양이">
+    
+    <button id="generateBtn" onclick="generateImage()">생성하기</button>
+    <div id="status" class="status"></div>
+
+    <img id="resultImage" alt="생성 결과">
+    <button id="downloadBtn" onclick="downloadImage()">이미지 다운로드</button>
 </div>
 
 <script>
-    function generateImage() {
+    // 1. 이미지 업로드 미리보기 처리
+    document.getElementById('imageInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const preview = document.getElementById('preview');
+                preview.src = event.target.result;
+                preview.style.display = 'block';
+            }
+            reader.readAsDataURL(file);
+        }
+    });
+
+    let currentImageUrl = '';
+
+    // 2. 번역 및 이미지 생성
+    async function generateImage() {
         const prompt = document.getElementById('promptInput').value;
         const btn = document.getElementById('generateBtn');
-        const statusMsg = document.getElementById('statusMsg');
+        const status = document.getElementById('status');
         const resultImg = document.getElementById('resultImage');
+        const downloadBtn = document.getElementById('downloadBtn');
 
-        if (!prompt.trim()) {
-            alert("프롬프트를 입력해주세요!");
-            return;
-        }
+        if (!prompt.trim()) return alert("프롬프트를 입력해주세요.");
 
-        // 상태 변경
         btn.disabled = true;
-        btn.innerText = "생성 중...";
-        statusMsg.style.color = "blue";
-        statusMsg.innerText = "⏳ 이미지를 생성하는 중입니다... (빠릅니다!)";
+        status.innerText = "제미나이 번역 및 이미지 생성 중...";
         resultImg.style.display = "none";
+        downloadBtn.style.display = "none";
 
-        // 🔥 마법의 URL: 프롬프트를 주소 뒤에 붙이기만 하면 이미지를 줍니다! (Flux 모델 기반)
-        // seed 값을 랜덤으로 주어 매번 새로운 이미지가 나오게 설정
-        const randomSeed = Math.floor(Math.random() * 100000);
-        const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?seed=${randomSeed}&width=512&height=512&nologo=true`;
+        try {
+            // Vercel 서버로 한국어 프롬프트 전송
+            const res = await fetch('/api/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: prompt })
+            });
 
-        // 이미지 로딩 처리
-        resultImg.onload = function() {
-            statusMsg.style.color = "green";
-            statusMsg.innerText = "✅ 이미지 생성 완료!";
-            resultImg.style.display = "block";
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+
+            // 제미나이가 번역한 영어 프롬프트
+            const translatedPrompt = data.translatedPrompt;
+            
+            // Pollinations 무료 생성 API 호출
+            const randomSeed = Math.floor(Math.random() * 99999);
+            currentImageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(translatedPrompt)}?seed=${randomSeed}&width=512&height=512&nologo=true`;
+
+            resultImg.src = currentImageUrl;
+            
+            resultImg.onload = function() {
+                status.innerText = `완료! (번역: ${translatedPrompt})`;
+                resultImg.style.display = "block";
+                downloadBtn.style.display = "block";
+                btn.disabled = false;
+            };
+
+            resultImg.onerror = function() {
+                throw new Error("이미지를 불러오는데 실패했습니다.");
+            };
+
+        } catch (error) {
+            status.innerText = "에러: " + error.message;
             btn.disabled = false;
-            btn.innerText = "이미지 생성하기";
-        };
+        }
+    }
 
-        resultImg.onerror = function() {
-            statusMsg.style.color = "red";
-            statusMsg.innerText = "❌ 이미지 생성에 실패했습니다.";
-            btn.disabled = false;
-            btn.innerText = "이미지 생성하기";
-        };
-
-        // 이미지 출처(src)를 방금 만든 URL로 변경 (이 순간 바로 생성 요청이 들어갑니다)
-        resultImg.src = imageUrl;
+    // 3. 다운로드 기능
+    async function downloadImage() {
+        if (!currentImageUrl) return;
+        try {
+            // CORS 우회를 위해 blob으로 받아와서 다운로드
+            const response = await fetch(currentImageUrl);
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `generated_image_${Date.now()}.jpg`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            alert("다운로드 중 오류가 발생했습니다.");
+        }
     }
 </script>
 
