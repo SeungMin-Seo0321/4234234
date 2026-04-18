@@ -12,13 +12,13 @@ export default async function handler(req, res) {
     }
 
     try {
-        // Gemini API를 이용한 한/영 번역
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+        // Gemini API를 이용한 한/영 번역 (gemini-2.5-flash-lite 적용)
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
         const geminiResponse = await fetch(geminiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                contents: [{
+                contents:[{
                     parts:[{ text: `Translate the following Korean text to English. Output only the English translation without any extra words: ${prompt}` }]
                 }]
             })
