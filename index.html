@@ -3,70 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>무료 AI 이미지 생성기</title>
+    <title>초간단 무료 AI 이미지 생성기</title>
     <style>
-        body {
-            font-family: 'Pretendard', sans-serif;
-            background-color: #f4f4f9;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 50px 20px;
-            margin: 0;
-        }
-        .container {
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            max-width: 500px;
-            width: 100%;
-            text-align: center;
-        }
-        input[type="text"] {
-            width: 90%;
-            padding: 12px;
-            margin-bottom: 15px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 16px;
-            box-sizing: border-box;
-        }
-        button {
-            background-color: #000000;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            font-size: 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background 0.3s;
-            width: 100%;
-        }
-        button:hover { background-color: #333333; }
+        body { font-family: sans-serif; background-color: #f4f4f9; display: flex; flex-direction: column; align-items: center; padding: 50px 20px; }
+        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 500px; width: 100%; text-align: center; }
+        input[type="text"] { width: 90%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; }
+        button { background-color: #000; color: white; border: none; padding: 12px 24px; font-size: 16px; border-radius: 6px; cursor: pointer; width: 100%; }
+        button:hover { background-color: #333; }
         button:disabled { background-color: #aaa; cursor: not-allowed; }
-        
-        #statusMsg { margin-top: 15px; font-weight: bold; font-size: 14px; }
-        .loading { color: #0070f3; }
-        .success { color: #28a745; }
-        .error { color: #dc3545; }
-        
-        #resultImage {
-            margin-top: 20px;
-            max-width: 100%;
-            border-radius: 8px;
-            display: none; /* 처음엔 숨겨둠 */
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
+        #statusMsg { margin-top: 15px; font-weight: bold; }
+        #resultImage { margin-top: 20px; max-width: 100%; border-radius: 8px; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>🎨 무료 AI 이미지 생성</h2>
+    <h2>🎨 완전 무료 AI 이미지 (No API Key)</h2>
     <p>영어로 프롬프트를 입력해보세요!</p>
     
-    <input type="text" id="promptInput" value="A cute cat flying in space, cinematic lighting" placeholder="예: A cute cat flying in space">
+    <input type="text" id="promptInput" value="A futuristic cyberpunk city, neon lights, highly detailed" placeholder="예: A futuristic cyberpunk city">
     <button id="generateBtn" onclick="generateImage()">이미지 생성하기</button>
 
     <p id="statusMsg"></p>
@@ -74,61 +29,47 @@
 </div>
 
 <script>
-    async function generateImage() {
+    function generateImage() {
         const prompt = document.getElementById('promptInput').value;
         const btn = document.getElementById('generateBtn');
         const statusMsg = document.getElementById('statusMsg');
         const resultImg = document.getElementById('resultImage');
 
-        // 입력값 확인
         if (!prompt.trim()) {
             alert("프롬프트를 입력해주세요!");
             return;
         }
 
-        // 1. UI 상태 변경 (로딩 중)
+        // 상태 변경
         btn.disabled = true;
         btn.innerText = "생성 중...";
-        statusMsg.className = "loading";
-        statusMsg.innerText = "⏳ 이미지를 생성하는 중입니다... (10~30초 소요)";
-        resultImg.style.display = "none"; // 기존 이미지 숨기기
+        statusMsg.style.color = "blue";
+        statusMsg.innerText = "⏳ 이미지를 생성하는 중입니다... (빠릅니다!)";
+        resultImg.style.display = "none";
 
-        try {
-            // 2. Vercel 백엔드 API(/api/generate)로 프롬프트 전송
-            const response = await fetch('/api/generate', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ prompt: prompt })
-            });
+        // 🔥 마법의 URL: 프롬프트를 주소 뒤에 붙이기만 하면 이미지를 줍니다! (Flux 모델 기반)
+        // seed 값을 랜덤으로 주어 매번 새로운 이미지가 나오게 설정
+        const randomSeed = Math.floor(Math.random() * 100000);
+        const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?seed=${randomSeed}&width=512&height=512&nologo=true`;
 
-            // 3. 응답 에러 처리
-            if (!response.ok) {
-                const errData = await response.json().catch(() => ({}));
-                throw new Error(errData.error || `서버 에러가 발생했습니다. (상태 코드: ${response.status})`);
-            }
-
-            // 4. 받아온 이미지를 화면에 표시
-            const imageBlob = await response.blob();
-            const imageUrl = URL.createObjectURL(imageBlob);
-
-            resultImg.src = imageUrl;
-            resultImg.style.display = "block";
-            
-            statusMsg.className = "success";
+        // 이미지 로딩 처리
+        resultImg.onload = function() {
+            statusMsg.style.color = "green";
             statusMsg.innerText = "✅ 이미지 생성 완료!";
-
-        } catch (error) {
-            // 5. 에러 발생 시 텍스트 빨간색으로 표시
-            console.error(error);
-            statusMsg.className = "error";
-            statusMsg.innerText = "❌ 에러: " + error.message;
-        } finally {
-            // 6. 버튼 다시 누를 수 있게 복구
+            resultImg.style.display = "block";
             btn.disabled = false;
             btn.innerText = "이미지 생성하기";
-        }
+        };
+
+        resultImg.onerror = function() {
+            statusMsg.style.color = "red";
+            statusMsg.innerText = "❌ 이미지 생성에 실패했습니다.";
+            btn.disabled = false;
+            btn.innerText = "이미지 생성하기";
+        };
+
+        // 이미지 출처(src)를 방금 만든 URL로 변경 (이 순간 바로 생성 요청이 들어갑니다)
+        resultImg.src = imageUrl;
     }
 </script>
 
