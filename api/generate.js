@@ -7,7 +7,7 @@ export default async function handler(req, res) {
     const { prompt } = req.body;
     // Vercel 환경 변수에서 토큰을 안전하게 불러옵니다.
     const HF_TOKEN = process.env.HF_TOKEN; 
-    const API_URL = "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell";
+    const API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0";
 
     try {
         const response = await fetch(API_URL, {
