@@ -1,41 +1,39 @@
+// api/generate.js
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'POST 요청만 지원합니다.' });
     }
 
     const { prompt } = req.body;
-    const HF_TOKEN = process.env.HF_TOKEN; 
+    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-    // 🚨 [핵심 방어 코드] Vercel 환경변수에 토큰이 제대로 안 들어있으면 여기서 멈추고 알려줍니다!
-    if (!HF_TOKEN || HF_TOKEN === "undefined") {
-        return res.status(500).json({ 
-            error: "Vercel 환경변수(HF_TOKEN)가 설정되지 않았습니다! Vercel 세팅을 다시 확인해주세요." 
-        });
+    if (!GEMINI_API_KEY) {
+        return res.status(500).json({ error: "Vercel 환경변수(GEMINI_API_KEY)가 없습니다." });
     }
-    
-    // 다시 가장 퀄리티가 좋은 무료 Flux 모델로 복구
-    const API_URL = "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell";
 
     try {
-        const response = await fetch(API_URL, {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${HF_TOKEN}`,
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ inputs: prompt }),
+        // Gemini API를 이용한 한/영 번역
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+        const geminiResponse = await fetch(geminiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{
+                    parts:[{ text: `Translate the following Korean text to English. Output only the English translation without any extra words: ${prompt}` }]
+                }]
+            })
         });
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HF 에러(${response.status}): ${errorText}`);
+        const geminiData = await geminiResponse.json();
+        
+        if (!geminiResponse.ok) {
+            throw new Error(geminiData.error?.message || "Gemini 번역 실패");
         }
 
-        const arrayBuffer = await response.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
+        // 번역된 텍스트 추출
+        const translatedPrompt = geminiData.candidates[0].content.parts[0].text.trim();
 
-        res.setHeader('Content-Type', 'image/jpeg');
-        res.status(200).send(buffer);
+        res.status(200).json({ translatedPrompt });
         
     } catch (error) {
         res.status(500).json({ error: error.message });
