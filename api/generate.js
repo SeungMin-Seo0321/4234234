@@ -1,13 +1,13 @@
-// api/generate.js
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'POST 요청만 지원합니다.' });
     }
 
     const { prompt } = req.body;
-    // Vercel 환경 변수에서 토큰을 안전하게 불러옵니다.
     const HF_TOKEN = process.env.HF_TOKEN; 
-    const API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0";
+    
+    // 완전 공개된(약관 동의 필요 없는) 기본 모델로 변경!
+    const API_URL = "https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5";
 
     try {
         const response = await fetch(API_URL, {
@@ -20,10 +20,11 @@ export default async function handler(req, res) {
         });
 
         if (!response.ok) {
-            throw new Error(`Hugging Face API 에러 (${response.status})`);
+            // 이번에는 에러의 진짜 이유(텍스트)를 무조건 반환하게 수정했습니다.
+            const errorText = await response.text();
+            throw new Error(`HF 에러(${response.status}): ${errorText}`);
         }
 
-        // 받아온 이미지 데이터를 그대로 클라이언트에게 전달합니다.
         const arrayBuffer = await response.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
 
